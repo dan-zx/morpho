@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="all_stations_query">SELECT s.id, s.name, s.radius, s.latitude, s.longitude FROM station s</string>
+    <string name="nearest_stations_query">SELECT r.id, r.radius, r.latitude, r.longitude FROM (SELECT s.id, s.radius, s.latitude, s.longitude, (DEGREES(ACOS((SIN(RADIANS(s.latitude)) * SIN(RADIANS(?)) + COS(RADIANS(s.latitude)) * COS(RADIANS(?)) * COS(RADIANS(s.longitude-(?))))))*60*1.1515*1.609344*1000) as distance FROM station s) AS r order by r.distance LIMIT ?</string>
+    <string name="coming_schedules_query">SELECT r.name AS route_name, s.departure_at FROM route r INNER JOIN schedule s ON r.id = s.route_id WHERE r.station_id = ? ORDER BY s.departure_at LIMIT ?</string>
+
+</resources>
