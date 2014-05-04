@@ -2,5 +2,12 @@
 <resources>
 
     <string name="app_name">Morpho</string>
+    
+    <string-array name="service_day">
+        <item>Entre semana</item>
+        <item>Sábado</item>
+        <item>Domingo</item>
+        <item>Feriado</item>
+    </string-array>
 
 </resources>
