@@ -67,7 +67,7 @@ public class MainActivity
     protected void onStop() {
         if (locationClient.isConnected()) {
             locationClient.removeLocationUpdates(this);
-            locationClient.removeGeofences(transitionsIntentService, this);
+            if (transitionsIntentService != null) locationClient.removeGeofences(transitionsIntentService, this);
             locationClient.disconnect();
         }
         super.onStop();

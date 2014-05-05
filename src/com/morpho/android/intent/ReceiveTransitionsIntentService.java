@@ -4,6 +4,7 @@ import android.app.IntentService;
 import android.app.Notification;
 import android.content.Intent;
 import android.preview.support.v4.app.NotificationManagerCompat;
+import android.preview.support.wearable.notifications.WearableNotifications;
 import android.support.v4.app.NotificationCompat;
 import android.text.format.DateFormat;
 import android.util.Log;
@@ -57,30 +58,59 @@ public class ReceiveTransitionsIntentService extends IntentService {
                         @Override
                         public void onPostExecute(List<Schedule> result) {
                             Log.d(TAG, "Result: " + result);
-                            if (!result.isEmpty()) {
-                                StringBuilder sb = new StringBuilder();
-                                for (Schedule s : result) {
-                                    sb.append("Ruta ")
-                                        .append(s.getRoute().getName())
-                                        .append(" Horario: ")
-                                        .append(DateFormat.getTimeFormat(getApplicationContext()).format(s.getDepartureAt()))
-                                        .append('\n');
-                                }
-                                
-                                Log.d(TAG, sb.toString());
-                                Notification notification = new NotificationCompat.Builder(getApplicationContext())
-                                    .setContentTitle("Horarios de autobuses próximos")
-                                    .setContentText(sb.toString())
-                                    .setTicker("Terminal X de autobuses")
-                                    .setDefaults(Notification.DEFAULT_SOUND)
-                                    .setAutoCancel(true)
-                                    .setSmallIcon(R.drawable.ic_launcher)
-                                    .build();
-                                notificationManager.notify(++notificationId, notification);
-                            }
+                            if (!result.isEmpty()) notificationManager.notify(++notificationId, buildNotification(result));
                         }
                     });
             } else Log.e(TAG, "Geofence transition error: " + Integer.toString(transitionType));
+        }
+    }
+    
+    private Notification buildNotification(List<Schedule> schedules) {
+        if (schedules.size() > 1) { // More than one
+            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext())
+                .setSmallIcon(R.drawable.ic_notification_schedules)
+                .setDefaults(Notification.DEFAULT_SOUND)
+                .setContentTitle("Horarios")
+                .setTicker("Horarios de próximos autobuses");
+            WearableNotifications.Builder wearableNotificationsBuilder = new WearableNotifications.Builder(notificationBuilder);
+            int i = 0;
+            for (Schedule schedule : schedules) {
+                NotificationCompat.InboxStyle style = new NotificationCompat.InboxStyle()
+                    .setBigContentTitle("Horario");
+                StringBuilder contentText = new StringBuilder()
+                    .append("Ruta ")
+                    .append(schedule.getRoute().getName());
+                style.addLine(contentText.toString());
+                contentText = new StringBuilder()
+                    .append("* Próxima salida: ")
+                    .append(DateFormat.getTimeFormat(getApplicationContext()).format(schedule.getDepartureAt()));
+                style.addLine(contentText.toString());
+                if (i > 0) { 
+                    Notification newPageNotification = new NotificationCompat.Builder(this)
+                        .setStyle(style)
+                        .build();
+                    wearableNotificationsBuilder.addPage(newPageNotification);
+                } else notificationBuilder.setStyle(style);
+                i++;
+            }
+            
+            return wearableNotificationsBuilder.build();
+        } else { // One
+            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext())
+                .setSmallIcon(R.drawable.ic_notification_schedules)
+                .setDefaults(Notification.DEFAULT_SOUND)
+                .setContentTitle("Horario")
+                .setTicker("Horario del próximo autobus");
+            StringBuilder contentText = new StringBuilder().append("Ruta ")
+                    .append(schedules.get(0).getRoute().getName());
+            NotificationCompat.InboxStyle style = new NotificationCompat.InboxStyle()
+                .setBigContentTitle("Horario");
+            style.addLine(contentText.toString());
+            contentText = new StringBuilder().append("* Próxima salida: ")
+                    .append(DateFormat.getTimeFormat(getApplicationContext()).format(schedules.get(0).getDepartureAt()));
+            style.addLine(contentText.toString());
+            notificationBuilder.setStyle(style);
+            return notificationBuilder.build();
         }
     }
 }
