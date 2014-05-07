@@ -8,6 +8,11 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
+import android.widget.ArrayAdapter;
+import android.widget.CompoundButton;
+import android.widget.Spinner;
+import android.widget.Switch;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
@@ -21,6 +26,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.morpho.android.R;
 import com.morpho.android.data.GeoPoint;
 import com.morpho.android.data.Station;
@@ -40,19 +47,24 @@ public class MainActivity
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String MOCK_LOCATION_PROVIDER = "MOCK";
 
+    private boolean isUsingMockLocations;
     private GoogleMap map;
+    private Marker userCurrentLocationMarker;
     private LocationClient locationClient;
     private MorphoClientFactory morphoClientFactory;
     private List<Geofence> geofences;
     private PendingIntent transitionsIntentService;
-    private Location currentLocation;
     private LocationRequest locationRequest;
+    private Switch mockLocationsSwitch;
+    private Spinner routeSpinner;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         morphoClientFactory = new MorphoClientFactory(this);
+        setUpRouteSpinner();
+        setUpMockLocationsSwitch();
         setUpMapIfNeeded();
         setUpLocationClient();
     }
@@ -90,7 +102,7 @@ public class MainActivity
                 PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
-    private void setUpGeofences() {
+    private void setUpGeofences(Location currentLocation) {
         GeoPoint geoPoint = new GeoPoint();
         geoPoint.setLatitude(currentLocation.getLatitude());
         geoPoint.setLongitude(currentLocation.getLongitude());
@@ -137,7 +149,7 @@ public class MainActivity
                     
                     @Override
                     public void onMapLongClick(LatLng point) {
-                        if (locationClient.isConnected()) {
+                        if (locationClient.isConnected() && isUsingMockLocations) {
                             Location newLocation = new Location(MOCK_LOCATION_PROVIDER);
                             newLocation.setLatitude(point.latitude);
                             newLocation.setLongitude(point.longitude);
@@ -150,6 +162,56 @@ public class MainActivity
                 });
             }
         }
+    }
+    
+    private void setUpMockLocationsSwitch() {
+        mockLocationsSwitch = (Switch) findViewById(R.id.mock_locations_switch);
+        mockLocationsSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    if (locationClient.isConnected()) {
+                        locationClient.setMockMode(true);
+                        isUsingMockLocations = true;
+                    } else {
+                        isUsingMockLocations = false;
+                        buttonView.setChecked(false);
+                        Toast.makeText(getApplicationContext(), 
+                                "GPS no esta listo aún", 
+                                Toast.LENGTH_SHORT)
+                                .show();
+                    }
+                } else {
+                    if (locationClient.isConnected()) {
+                        locationClient.setMockMode(false);
+                        isUsingMockLocations = false;
+                    }
+                }
+            }
+        });
+    }
+    
+    private void setUpRouteSpinner() {
+        routeSpinner = (Spinner) findViewById(R.id.route_spinner);
+
+        // TODO: fill using a web service
+        String[] spinnerValues = { "CAPU", "PUEBLA", "CIRCUITO" }; 
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, spinnerValues);
+        routeSpinner.setAdapter(adapter);
+    }
+    
+    private void updateUserCurrentLocationMarker(Location location) {
+        LatLng latlng = new LatLng(location.getLatitude(), location.getLongitude());
+        if (userCurrentLocationMarker == null) {
+            userCurrentLocationMarker = map.addMarker(
+                    new MarkerOptions()
+                        .draggable(false)
+                        .position(latlng)
+                        .title("Aquí estas"));
+        } else userCurrentLocationMarker.setPosition(latlng);
+        userCurrentLocationMarker.showInfoWindow();
+        map.animateCamera(CameraUpdateFactory.newLatLng(latlng));
     }
 
     @Override
@@ -166,11 +228,10 @@ public class MainActivity
     @Override
     public void onConnected(Bundle connectionHint) {
         Log.d(TAG, "Connected");
-        locationClient.setMockMode(true);
         Location lastLocation = locationClient.getLastLocation();
         if (lastLocation != null && age(lastLocation) <= FIVE_MINS) {
-            currentLocation = lastLocation;
-            if (geofences == null) setUpGeofences();
+            updateUserCurrentLocationMarker(lastLocation);
+            if (geofences == null) setUpGeofences(lastLocation);
         }
         locationRequest = LocationRequest.create()
                 .setFastestInterval(0)
@@ -188,8 +249,8 @@ public class MainActivity
     @Override
     public void onLocationChanged(Location location) {
         Log.d(TAG, "onLocationChanged: " + location);
-        currentLocation = location;
-        if (geofences == null) setUpGeofences();
+        if (geofences == null) setUpGeofences(location);
+        updateUserCurrentLocationMarker(location);
     }
 
     @Override
