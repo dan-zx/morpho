@@ -131,7 +131,7 @@ public class SchedulesSQLite implements Schedules {
                                 schedule.setId(SQLiteUtils.getLong(cursor, "id"));
                                 schedule.setRoute(route);
                                 schedule.setDepartureAt(SQLiteUtils.getDateFromString(cursor, "departure_at", TimeString.TIME));
-                                schedule.setServiceDay(SQLiteUtils.getEnum(cursor, "service_day", ServiceDay.class));
+                                schedule.setServiceDay(SQLiteUtils.getEnumFromName(cursor, "service_day", ServiceDay.class));
                                 return schedule;
                             }
                         }
