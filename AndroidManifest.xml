@@ -41,6 +41,12 @@
         </activity>
 
         <service android:name="com.morpho.android.intent.ReceiveTransitionsIntentService" />
+
+        <receiver android:name="com.morpho.android.receiver.VoiceReplyReceiver" >
+            <intent-filter>
+                <action android:name="VOICE_REPLY" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

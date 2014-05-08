@@ -2,8 +2,10 @@ package com.morpho.android.intent;
 
 import android.app.IntentService;
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.preview.support.v4.app.NotificationManagerCompat;
+import android.preview.support.wearable.notifications.RemoteInput;
 import android.preview.support.wearable.notifications.WearableNotifications;
 import android.support.v4.app.NotificationCompat;
 import android.text.format.DateFormat;
@@ -13,6 +15,7 @@ import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.LocationClient;
 import com.morpho.android.R;
 import com.morpho.android.data.Schedule;
+import com.morpho.android.receiver.VoiceReplyReceiver;
 import com.morpho.android.ws.AsyncTaskAdapter;
 import com.morpho.android.ws.Schedules;
 import com.morpho.android.ws.impl.MorphoClientFactory;
@@ -22,6 +25,7 @@ import java.util.List;
 public class ReceiveTransitionsIntentService extends IntentService {
 
     private static final String TAG = ReceiveTransitionsIntentService.class.getSimpleName();
+    private static final String EXTRA_VOICE_REPLY = "extra_voice_reply";
 
     private static int notificationId;
     
@@ -72,7 +76,8 @@ public class ReceiveTransitionsIntentService extends IntentService {
                 .setSmallIcon(R.drawable.ic_notification_schedules)
                 .setDefaults(Notification.DEFAULT_SOUND)
                 .setContentTitle("Horarios")
-                .setTicker("Horarios de próximos autobuses");
+                .setTicker("Horarios de próximos autobuses")
+                .setContentIntent(getIntent());
             WearableNotifications.Builder wearableNotificationsBuilder = new WearableNotifications.Builder(notificationBuilder);
             int i = 0;
             for (Schedule schedule : schedules) {
@@ -94,14 +99,19 @@ public class ReceiveTransitionsIntentService extends IntentService {
                 } else notificationBuilder.setStyle(style);
                 i++;
             }
-            
-            return wearableNotificationsBuilder.build();
+
+            return wearableNotificationsBuilder.addRemoteInputForContentIntent(
+                    new RemoteInput.Builder(EXTRA_VOICE_REPLY)
+                        .setLabel("¿Otra ruta?")
+                        .build())
+                    .build();
         } else { // One
             NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext())
                 .setSmallIcon(R.drawable.ic_notification_schedules)
                 .setDefaults(Notification.DEFAULT_SOUND)
                 .setContentTitle("Horario")
-                .setTicker("Horario del próximo autobus");
+                .setTicker("Horario del próximo autobus")
+                .setContentIntent(getIntent());
             StringBuilder contentText = new StringBuilder().append("Ruta ")
                     .append(schedules.get(0).getRoute().getName());
             NotificationCompat.InboxStyle style = new NotificationCompat.InboxStyle()
@@ -111,7 +121,21 @@ public class ReceiveTransitionsIntentService extends IntentService {
                     .append(DateFormat.getTimeFormat(getApplicationContext()).format(schedules.get(0).getDepartureAt()));
             style.addLine(contentText.toString());
             notificationBuilder.setStyle(style);
-            return notificationBuilder.build();
+
+            Notification replyNotification = new WearableNotifications.Builder(notificationBuilder)
+                    .addRemoteInputForContentIntent(
+                            new RemoteInput.Builder(EXTRA_VOICE_REPLY)
+                                .setLabel("¿Otra ruta?")
+                                .build())
+                    .build();
+            
+            return replyNotification;
         }
+    }
+    
+    private PendingIntent getIntent() {
+        Intent replyIntent = new Intent(this, VoiceReplyReceiver.class);
+        replyIntent.setAction("VOICE_REPLY");
+        return PendingIntent.getBroadcast(this, 0, replyIntent, 0);
     }
 }
