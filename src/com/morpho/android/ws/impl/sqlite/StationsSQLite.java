@@ -42,7 +42,6 @@ public class StationsSQLite implements Stations {
         
         @Override
         public FetchRequest nearestStations(GeoPoint location) {
-            limit = DEFAULT_RESULT_LIMIT;
             query = context.getString(R.string.all_stations_query).replaceAll("\\\\'", "'");
             this.location = location;
             return this;
@@ -50,7 +49,7 @@ public class StationsSQLite implements Stations {
 
         @Override
         public FetchRequest limitTo(int limit) {
-            this.limit = limit < 0 ? this.limit = DEFAULT_RESULT_LIMIT : limit;
+            this.limit = limit;
             return this;
         }
 
@@ -84,7 +83,7 @@ public class StationsSQLite implements Stations {
                                 return Math.acos(Math.sin(lat1)*Math.sin(lat2)+Math.cos(lat1)*Math.cos(lat2)*Math.cos(lon2-lon1))*earthRadius;
                             }
                         });
-                        result = result.subList(0, limit);
+                        if (limit > 0) result = result.subList(0, limit);
                         if (adapter != null) adapter.onPostExecute(result);
                     }
                 }

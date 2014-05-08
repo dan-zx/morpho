@@ -305,4 +305,19 @@ class SQLiteUtils {
         if (value != null) return enumType.getEnumConstants()[value];
         return null;
     }
+
+    /**
+     * @param numberOfPlaceholders la cantidad de '?' 
+     * @return "?, ?, ..., ?"
+     */
+    static String placeholdersForInClause(int numberOfPlaceholders) {
+        if (numberOfPlaceholders >= 1) {
+            StringBuilder sb = new StringBuilder(numberOfPlaceholders * 2 - 1).append('?');
+            for (int i = 1; i < numberOfPlaceholders; i++) sb.append(", ?");
+            return sb.toString();
+        }
+        
+        Log.w(TAG, "No placeholders, will lead to an invalid query!!");
+        return null;
+    }
 }

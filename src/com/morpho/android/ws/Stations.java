@@ -9,9 +9,7 @@ public interface Stations {
 
     FetchRequest fetch();
 
-    static interface FetchRequest {
-
-        int DEFAULT_RESULT_LIMIT = 3;
+    interface FetchRequest extends MorphoRequest {
 
         FetchRequest nearestStations(GeoPoint location);
         FetchRequest limitTo(int limit);

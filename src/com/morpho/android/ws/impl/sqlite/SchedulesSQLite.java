@@ -3,23 +3,27 @@ package com.morpho.android.ws.impl.sqlite;
 import android.content.Context;
 import android.database.Cursor;
 import android.os.AsyncTask;
+import android.util.Log;
 
 import com.morpho.android.R;
 import com.morpho.android.data.GeoArea;
 import com.morpho.android.data.GeoPoint;
 import com.morpho.android.data.Route;
 import com.morpho.android.data.Schedule;
-import com.morpho.android.data.Station;
 import com.morpho.android.data.Schedule.ServiceDay;
+import com.morpho.android.data.Station;
 import com.morpho.android.ws.AsyncTaskAdapter;
 import com.morpho.android.ws.Schedules;
 import com.morpho.android.ws.impl.sqlite.SQLiteTemplate.RowMapper;
 import com.morpho.android.ws.impl.sqlite.SQLiteUtils.TimeString;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
 public class SchedulesSQLite implements Schedules {
+
+    private static final String TAG = SchedulesSQLite.class.getSimpleName();
 
     private final Context context;
 
@@ -37,19 +41,21 @@ public class SchedulesSQLite implements Schedules {
         private final Context context;
         
         private String query;
+        private String inClause;
+        private String[] busNames;
         private ServiceDay serviceDay;
         private long stationId;
-        private int limit;
+        private Integer limit;
 
         private FetchSQLiteRequest(Context context) {
             this.context = context;
         }
         
         @Override
-        public FetchRequest comingSchedules(long stationId) {
+        public FetchSQLiteRequest comingSchedules(long stationId) {
             this.stationId = stationId;
-            limit = DEFAULT_RESULT_LIMIT;
             query = context.getString(R.string.coming_schedules_query).replaceAll("\\\\'", "'");
+            inClause = context.getString(R.string.all_bus_names_query);
             Calendar cal = Calendar.getInstance();
             int day = cal.get(Calendar.DAY_OF_WEEK); 
             switch (day) {
@@ -61,19 +67,30 @@ public class SchedulesSQLite implements Schedules {
         }
 
         @Override
-        public FetchRequest on(ServiceDay serviceDay) {
+        public FetchSQLiteRequest on(ServiceDay serviceDay) {
             this.serviceDay = serviceDay;
             return this;
         }
 
         @Override
-        public FetchRequest limitTo(int limit) {
-            this.limit = limit;
+        public FetchSQLiteRequest only(String... busNames) {
+            inClause = SQLiteUtils.placeholdersForInClause(busNames.length);
+            this.busNames = busNames;
+            return this;
+        }
+
+        @Override
+        public FetchSQLiteRequest limitTo(int limit) {
+            if (limit > 0) {
+                this.limit = limit;
+                query += " " + context.getString(R.string.limit_query_fragment);
+            }
             return this;
         }
 
         @Override
         public void loadSchedules(final AsyncTaskAdapter<List<Schedule>> adapter) {
+            query = String.format(query, inClause);
             new SchedulesLoader(context) {
                 @Override
                 protected void onPreExecute() {
@@ -86,7 +103,7 @@ public class SchedulesSQLite implements Schedules {
                     super.onPostExecute(result);
                     if (adapter != null) adapter.onPostExecute(result);
                 }
-            }.execute(query, stationId, limit);
+            }.execute(query, stationId, busNames, serviceDay, limit);
         }
         
         private static class SchedulesLoader extends AsyncTask<Object, Void, List<Schedule>> {
@@ -107,9 +124,15 @@ public class SchedulesSQLite implements Schedules {
             @Override
             protected List<Schedule> doInBackground(Object... params) {
                 String query = (String) params[0];
-                String[] queryParams = new String[params.length-1];
-                for (int i = 1; i < params.length; i++) queryParams[i-1] = params[i].toString();
-                return sqliteTemplate.queryForList(query, queryParams, 
+                ArrayList<String> queryParams = new ArrayList<String>(params.length-1);
+                for (int i = 1; i < params.length; i++) {
+                    if (params[i] != null) {
+                        if (params[i].getClass().isArray()) {
+                            for (Object obj : (Object[])params[i]) queryParams.add(obj.toString());
+                        } else queryParams.add(params[i].toString());
+                    }
+                }
+                return sqliteTemplate.queryForList(query, queryParams.toArray(new String[queryParams.size()]), 
                         new RowMapper<Schedule>() {
                             @Override
                             public Schedule mapRow(Cursor cursor, int rowNum) {
@@ -137,7 +160,6 @@ public class SchedulesSQLite implements Schedules {
                         }
                 );
             }
-            
         }
     }
 }

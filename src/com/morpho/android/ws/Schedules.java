@@ -9,12 +9,11 @@ public interface Schedules {
     
     FetchRequest fetch();
     
-    interface FetchRequest {
-        
-        int DEFAULT_RESULT_LIMIT = 3;
+    interface FetchRequest extends MorphoRequest {
         
         FetchRequest comingSchedules(long stationId);
         FetchRequest on(ServiceDay serviceDay);
+        FetchRequest only(String... busNames);
         FetchRequest limitTo(int limit);
         void loadSchedules(AsyncTaskAdapter<List<Schedule>> adapter);
     }

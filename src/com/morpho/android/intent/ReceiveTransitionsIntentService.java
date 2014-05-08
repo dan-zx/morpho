@@ -52,6 +52,7 @@ public class ReceiveTransitionsIntentService extends IntentService {
                 Schedules schedules = morphoClientFactory.get(Schedules.class);
                 schedules.fetch()
                     .comingSchedules(stationId)
+                    .only("CIRCUITO")
                     .limitTo(3)
                     .loadSchedules(new AsyncTaskAdapter<List<Schedule>>() {
 

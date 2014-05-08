@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical" >
 
-    <LinearLayout
+    <LinearLayout android:id="@+id/mock_input_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical" >
@@ -15,11 +15,6 @@
             android:layout_height="wrap_content"
             android:layout_margin="8dp"
             android:text="Simular ubicaciones" />
-
-        <Spinner
-            android:id="@+id/route_spinner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
     </LinearLayout>
 
     <fragment

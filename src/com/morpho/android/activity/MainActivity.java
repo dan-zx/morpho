@@ -8,9 +8,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
-import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
-import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.Toast;
 
@@ -56,14 +54,13 @@ public class MainActivity
     private PendingIntent transitionsIntentService;
     private LocationRequest locationRequest;
     private Switch mockLocationsSwitch;
-    private Spinner routeSpinner;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         morphoClientFactory = new MorphoClientFactory(this);
-        setUpRouteSpinner();
+        setUpBusChoices();
         setUpMockLocationsSwitch();
         setUpMapIfNeeded();
         setUpLocationClient();
@@ -89,7 +86,7 @@ public class MainActivity
         locationClient = new LocationClient(this, this, this);
     }
 
-    private long age(Location location) {
+    private long ageOf(Location location) {
         return (SystemClock.elapsedRealtimeNanos() - location.getElapsedRealtimeNanos()) / 1000000L;
     }
     
@@ -191,16 +188,11 @@ public class MainActivity
             }
         });
     }
-    
-    private void setUpRouteSpinner() {
-        routeSpinner = (Spinner) findViewById(R.id.route_spinner);
 
-        // TODO: fill using a web service
-        String[] spinnerValues = { "CAPU", "PUEBLA", "CIRCUITO" }; 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, spinnerValues);
-        routeSpinner.setAdapter(adapter);
+    private void setUpBusChoices() {
+        // TODO: setup all possible choices
     }
-    
+
     private void updateUserCurrentLocationMarker(Location location) {
         LatLng latlng = new LatLng(location.getLatitude(), location.getLongitude());
         if (userCurrentLocationMarker == null) {
@@ -229,7 +221,7 @@ public class MainActivity
     public void onConnected(Bundle connectionHint) {
         Log.d(TAG, "Connected");
         Location lastLocation = locationClient.getLastLocation();
-        if (lastLocation != null && age(lastLocation) <= FIVE_MINS) {
+        if (lastLocation != null && ageOf(lastLocation) <= FIVE_MINS) {
             updateUserCurrentLocationMarker(lastLocation);
             if (geofences == null) setUpGeofences(lastLocation);
         }
