@@ -25,7 +25,6 @@ import java.util.List;
 public class ReceiveTransitionsIntentService extends IntentService {
 
     private static final String TAG = ReceiveTransitionsIntentService.class.getSimpleName();
-    private static final String EXTRA_VOICE_REPLY = "extra_voice_reply";
 
     private static int notificationId;
     
@@ -50,34 +49,34 @@ public class ReceiveTransitionsIntentService extends IntentService {
         } else {
             int transitionType = LocationClient.getGeofenceTransition(intent);
             if (transitionType == Geofence.GEOFENCE_TRANSITION_ENTER) {
-                long stationId = Long.parseLong(LocationClient.getTriggeringGeofences(intent).get(0).getRequestId());
+                final long stationId = Long.parseLong(LocationClient.getTriggeringGeofences(intent).get(0).getRequestId());
                 Log.d(TAG, "Entered in:" + LocationClient.getTriggeringGeofences(intent));
                 MorphoClientFactory morphoClientFactory = new MorphoClientFactory(getApplicationContext());
                 Schedules schedules = morphoClientFactory.get(Schedules.class);
                 schedules.fetch()
                     .comingSchedules(stationId)
-                    .only("CIRCUITO")
+                    .only("CIRCUITO") // TODO: retrieve bus route from preferences
                     .limitTo(3)
                     .loadSchedules(new AsyncTaskAdapter<List<Schedule>>() {
 
                         @Override
                         public void onPostExecute(List<Schedule> result) {
                             Log.d(TAG, "Result: " + result);
-                            if (!result.isEmpty()) notificationManager.notify(++notificationId, buildNotification(result));
+                            if (!result.isEmpty()) notificationManager.notify(++notificationId, buildNotification(stationId, result));
                         }
                     });
             } else Log.e(TAG, "Geofence transition error: " + Integer.toString(transitionType));
         }
     }
     
-    private Notification buildNotification(List<Schedule> schedules) {
+    private Notification buildNotification(long stationId, List<Schedule> schedules) {
         if (schedules.size() > 1) { // More than one
             NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext())
                 .setSmallIcon(R.drawable.ic_notification_schedules)
                 .setDefaults(Notification.DEFAULT_SOUND)
                 .setContentTitle("Horarios")
                 .setTicker("Horarios de próximos autobuses")
-                .setContentIntent(getIntent());
+                .setContentIntent(getIntent(stationId));
             WearableNotifications.Builder wearableNotificationsBuilder = new WearableNotifications.Builder(notificationBuilder);
             int i = 0;
             for (Schedule schedule : schedules) {
@@ -101,7 +100,7 @@ public class ReceiveTransitionsIntentService extends IntentService {
             }
 
             return wearableNotificationsBuilder.addRemoteInputForContentIntent(
-                    new RemoteInput.Builder(EXTRA_VOICE_REPLY)
+                    new RemoteInput.Builder(VoiceReplyReceiver.EXTRA_VOICE_REPLAY)
                         .setLabel("¿Otra ruta?")
                         .build())
                     .build();
@@ -111,7 +110,7 @@ public class ReceiveTransitionsIntentService extends IntentService {
                 .setDefaults(Notification.DEFAULT_SOUND)
                 .setContentTitle("Horario")
                 .setTicker("Horario del próximo autobus")
-                .setContentIntent(getIntent());
+                .setContentIntent(getIntent(stationId));
             StringBuilder contentText = new StringBuilder().append("Ruta ")
                     .append(schedules.get(0).getRoute().getName());
             NotificationCompat.InboxStyle style = new NotificationCompat.InboxStyle()
@@ -124,7 +123,7 @@ public class ReceiveTransitionsIntentService extends IntentService {
 
             Notification replyNotification = new WearableNotifications.Builder(notificationBuilder)
                     .addRemoteInputForContentIntent(
-                            new RemoteInput.Builder(EXTRA_VOICE_REPLY)
+                            new RemoteInput.Builder(VoiceReplyReceiver.EXTRA_VOICE_REPLAY)
                                 .setLabel("¿Otra ruta?")
                                 .build())
                     .build();
@@ -133,9 +132,10 @@ public class ReceiveTransitionsIntentService extends IntentService {
         }
     }
     
-    private PendingIntent getIntent() {
+    private PendingIntent getIntent(long stationId) {
         Intent replyIntent = new Intent(this, VoiceReplyReceiver.class);
         replyIntent.setAction("VOICE_REPLY");
+        replyIntent.putExtra(VoiceReplyReceiver.EXTRA_STATION_ID_REPLAY, stationId);
         return PendingIntent.getBroadcast(this, 0, replyIntent, 0);
     }
 }

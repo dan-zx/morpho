@@ -3,7 +3,6 @@ package com.morpho.android.ws.impl.sqlite;
 import android.content.Context;
 import android.database.Cursor;
 import android.os.AsyncTask;
-import android.util.Log;
 
 import com.morpho.android.R;
 import com.morpho.android.data.GeoArea;
