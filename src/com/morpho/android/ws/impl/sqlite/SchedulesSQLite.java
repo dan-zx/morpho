@@ -22,9 +22,7 @@ import java.util.List;
 
 public class SchedulesSQLite implements Schedules {
 
-    private static final String TAG = SchedulesSQLite.class.getSimpleName();
-
-    private final Context context;
+	private final Context context;
 
     public SchedulesSQLite(Context context) {
         this.context = context.getApplicationContext();

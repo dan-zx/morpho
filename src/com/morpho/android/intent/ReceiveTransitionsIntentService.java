@@ -1,13 +1,15 @@
 package com.morpho.android.intent;
 
+import java.util.List;
+
 import android.app.IntentService;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Intent;
-import android.preview.support.v4.app.NotificationManagerCompat;
-import android.preview.support.wearable.notifications.RemoteInput;
-import android.preview.support.wearable.notifications.WearableNotifications;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationCompat.WearableExtender;
+import android.support.v4.app.NotificationManagerCompat;
+import android.support.v4.app.RemoteInput;
 import android.text.format.DateFormat;
 import android.util.Log;
 
@@ -19,8 +21,6 @@ import com.morpho.android.receiver.VoiceReplyReceiver;
 import com.morpho.android.ws.AsyncTaskAdapter;
 import com.morpho.android.ws.Schedules;
 import com.morpho.android.ws.impl.MorphoClientFactory;
-
-import java.util.List;
 
 public class ReceiveTransitionsIntentService extends IntentService {
 
@@ -75,9 +75,8 @@ public class ReceiveTransitionsIntentService extends IntentService {
                 .setSmallIcon(R.drawable.ic_notification_schedules)
                 .setDefaults(Notification.DEFAULT_SOUND)
                 .setContentTitle("Horarios")
-                .setTicker("Horarios de próximos autobuses")
-                .setContentIntent(getIntent(stationId));
-            WearableNotifications.Builder wearableNotificationsBuilder = new WearableNotifications.Builder(notificationBuilder);
+                .setTicker("Horarios de próximos autobuses");
+            WearableExtender wearableExtender = new WearableExtender();
             int i = 0;
             for (Schedule schedule : schedules) {
                 NotificationCompat.InboxStyle style = new NotificationCompat.InboxStyle()
@@ -94,23 +93,30 @@ public class ReceiveTransitionsIntentService extends IntentService {
                     Notification newPageNotification = new NotificationCompat.Builder(this)
                         .setStyle(style)
                         .build();
-                    wearableNotificationsBuilder.addPage(newPageNotification);
+                    wearableExtender.addPage(newPageNotification);
                 } else notificationBuilder.setStyle(style);
                 i++;
             }
 
-            return wearableNotificationsBuilder.addRemoteInputForContentIntent(
-                    new RemoteInput.Builder(VoiceReplyReceiver.EXTRA_VOICE_REPLAY)
-                        .setLabel("¿Otra ruta?")
-                        .build())
-                    .build();
+            RemoteInput remoteInput = new RemoteInput.Builder(VoiceReplyReceiver.EXTRA_VOICE_REPLY)
+	            .setLabel("¿Otra ruta?")
+	            .build();
+            
+            NotificationCompat.Action action =
+                    new NotificationCompat.Action.Builder(R.drawable.ic_action_search,
+                    		"¿Otra ruta?", getIntent(stationId))
+                            .addRemoteInput(remoteInput)
+                            .build();
+            
+            return notificationBuilder.extend(
+            		wearableExtender.addAction(action))
+            		.build();
         } else { // One
             NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext())
                 .setSmallIcon(R.drawable.ic_notification_schedules)
                 .setDefaults(Notification.DEFAULT_SOUND)
                 .setContentTitle("Horario")
-                .setTicker("Horario del próximo autobus")
-                .setContentIntent(getIntent(stationId));
+                .setTicker("Horario del próximo autobus");
             StringBuilder contentText = new StringBuilder().append("Ruta ")
                     .append(schedules.get(0).getRoute().getName());
             NotificationCompat.InboxStyle style = new NotificationCompat.InboxStyle()
@@ -121,21 +127,24 @@ public class ReceiveTransitionsIntentService extends IntentService {
             style.addLine(contentText.toString());
             notificationBuilder.setStyle(style);
 
-            Notification replyNotification = new WearableNotifications.Builder(notificationBuilder)
-                    .addRemoteInputForContentIntent(
-                            new RemoteInput.Builder(VoiceReplyReceiver.EXTRA_VOICE_REPLAY)
-                                .setLabel("¿Otra ruta?")
-                                .build())
-                    .build();
-            
-            return replyNotification;
+            RemoteInput remoteInput = new RemoteInput.Builder(VoiceReplyReceiver.EXTRA_VOICE_REPLY)
+            	.setLabel("¿Otra ruta?")
+            	.build();
+        
+            NotificationCompat.Action action =
+                new NotificationCompat.Action.Builder(R.drawable.ic_action_search,
+                		"¿Otra ruta?", getIntent(stationId))
+                        .addRemoteInput(remoteInput)
+                        .build();
+            return notificationBuilder.extend(
+            		new WearableExtender().addAction(action))
+            		.build();
         }
     }
     
     private PendingIntent getIntent(long stationId) {
-        Intent replyIntent = new Intent(this, VoiceReplyReceiver.class);
-        replyIntent.setAction("VOICE_REPLY");
-        replyIntent.putExtra(VoiceReplyReceiver.EXTRA_STATION_ID_REPLAY, stationId);
-        return PendingIntent.getBroadcast(this, 0, replyIntent, 0);
+    	Intent replyIntent = new Intent(this, VoiceReplyReceiver.class);
+    	replyIntent.putExtra(VoiceReplyReceiver.EXTRA_STATION_ID_REPLY, stationId);
+    	return PendingIntent.getBroadcast(this, 0, replyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 }
